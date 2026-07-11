@@ -6,7 +6,9 @@ const state = {
   image: null,        // { media_type, data }  — the inspiration screenshot
   logoDataUrl: null,  // data: URL substituted into {{LOGO_SRC}}
   design: null,       // { analysis, width, height, html }
-  turns: [],          // conversation history for refinement rounds
+  turns: [],          // design conversation history for refinement rounds
+  chatTurns: [],      // assistant conversation history
+  chatSummary: null,  // confirmed plan from the assistant, passed to generation
 };
 
 /* ---------- inspiration screenshot: paste / drop / browse ---------- */
@@ -48,7 +50,7 @@ $("logo-input").addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-/* ---------- generate & refine ---------- */
+/* ---------- form <-> state ---------- */
 
 function collectBrand() {
   return {
@@ -57,6 +59,7 @@ function collectBrand() {
     secondary: $("color-secondary").value,
     accent: $("color-accent").value,
     gradient: document.querySelector('input[name="treatment"]:checked').value === "gradient",
+    background: $("background").value.trim(),
     headingFont: $("font-heading").value.trim(),
     bodyFont: $("font-body").value.trim(),
     bold: $("style-bold").checked,
@@ -64,8 +67,135 @@ function collectBrand() {
     underline: $("style-underline").checked,
     hasLogo: Boolean(state.logoDataUrl),
     notes: $("brand-notes").value.trim(),
+    instructions: $("instructions").value.trim(),
   };
 }
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+function normalizeHex(v) {
+  if (typeof v !== "string") return null;
+  let h = v.trim();
+  if (/^#[0-9a-fA-F]{3}$/.test(h)) h = "#" + [...h.slice(1)].map((c) => c + c).join("");
+  return HEX_RE.test(h) ? h.toLowerCase() : null;
+}
+
+function applyUpdates(updates) {
+  if (!updates) return [];
+  const applied = [];
+  const setText = (id, val, label) => {
+    if (typeof val === "string") { $(id).value = val; flash(id); applied.push(label); }
+  };
+  const setColor = (id, val, label) => {
+    const hex = normalizeHex(val);
+    if (hex) { $(id).value = hex; flash(id); applied.push(label); }
+  };
+  const setCheck = (id, val, label) => {
+    if (typeof val === "boolean") { $(id).checked = val; flash(id); applied.push(label); }
+  };
+
+  setText("brand-name", updates.name, "brand name");
+  setColor("color-primary", updates.primary, "primary color");
+  setColor("color-secondary", updates.secondary, "secondary color");
+  setColor("color-accent", updates.accent, "accent color");
+  if (typeof updates.gradient === "boolean") {
+    document.querySelector(`input[name="treatment"][value="${updates.gradient ? "gradient" : "plain"}"]`).checked = true;
+    applied.push(updates.gradient ? "gradient treatment" : "plain colors");
+  }
+  setText("background", updates.background, "background");
+  setText("font-heading", updates.headingFont, "heading font");
+  setText("font-body", updates.bodyFont, "body font");
+  setCheck("style-bold", updates.bold, "bold");
+  setCheck("style-italic", updates.italic, "italic");
+  setCheck("style-underline", updates.underline, "underline");
+  setText("brand-notes", updates.notes, "brand notes");
+  setText("instructions", updates.instructions, "instructions");
+  setText("brief", updates.brief, "brief");
+  return applied;
+}
+
+function flash(id) {
+  const el = $(id);
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1600);
+}
+
+/* ---------- assistant chat ---------- */
+
+function addChatMessage(text, who) {
+  const div = document.createElement("div");
+  div.className = `msg ${who}-msg`;
+  div.textContent = text;
+  $("chat-log").appendChild(div);
+  $("chat-log").scrollTop = $("chat-log").scrollHeight;
+  return div;
+}
+
+async function sendToAssistant(userMessage) {
+  addChatMessage(userMessage, "user");
+  const thinking = addChatMessage("…", "assistant");
+  $("chat-send").disabled = true;
+  $("research-btn").disabled = true;
+  try {
+    const res = await fetch("/api/assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        history: state.chatTurns,
+        userMessage,
+        form: collectBrand(),
+        imageAttached: Boolean(state.image),
+        image: state.chatTurns.length === 0 ? state.image : null,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `Assistant request failed (${res.status})`);
+
+    state.chatTurns = json.turns;
+    const applied = applyUpdates(json.updates);
+    thinking.textContent = json.reply || "(no reply)";
+    if (applied.length) {
+      const note = document.createElement("div");
+      note.className = "msg applied-msg";
+      note.textContent = `✓ Updated in the form: ${applied.join(", ")}`;
+      $("chat-log").appendChild(note);
+    }
+    if (json.status === "ready") {
+      state.chatSummary = json.summary || json.reply;
+      $("ready-banner").hidden = false;
+      $("generate-btn").classList.add("pulse");
+    }
+    $("chat-log").scrollTop = $("chat-log").scrollHeight;
+  } catch (err) {
+    thinking.textContent = `⚠ ${err.message}`;
+    thinking.classList.add("error-msg");
+  } finally {
+    $("chat-send").disabled = false;
+    $("research-btn").disabled = false;
+  }
+}
+
+$("research-btn").addEventListener("click", () => {
+  const name = $("brand-name").value.trim();
+  if (!name) {
+    addChatMessage("Type the brand / company name first, then I can research it.", "assistant");
+    return;
+  }
+  sendToAssistant(
+    `Please research the company "${name}" online. Tell me what you find, confirm with me that it's the right company, and suggest brand colors, fonts, and notes that match their real branding.`
+  );
+});
+
+$("chat-send").addEventListener("click", () => {
+  const text = $("chat-text").value.trim();
+  if (!text) return;
+  $("chat-text").value = "";
+  sendToAssistant(text);
+});
+$("chat-text").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") $("chat-send").click();
+});
+
+/* ---------- generate & refine ---------- */
 
 function setStatus(msg, isError = false) {
   const el = $("status");
@@ -74,7 +204,7 @@ function setStatus(msg, isError = false) {
   el.classList.toggle("error", isError);
 }
 
-async function callApi(body, button) {
+async function callGenerate(body, button) {
   button.disabled = true;
   $("generate-btn").disabled = true;
   setStatus("Designing… analyzing layout, rebuilding it on-brand. This can take a minute or two.");
@@ -100,8 +230,14 @@ async function callApi(body, button) {
 
 $("generate-btn").addEventListener("click", () => {
   if (!state.image) { setStatus("Paste or drop an inspiration screenshot first.", true); return; }
-  callApi(
-    { image: state.image, brand: collectBrand(), brief: $("brief").value.trim() },
+  $("generate-btn").classList.remove("pulse");
+  callGenerate(
+    {
+      image: state.image,
+      brand: collectBrand(),
+      brief: $("brief").value.trim(),
+      chatContext: state.chatSummary,
+    },
     $("generate-btn")
   );
 });
@@ -109,7 +245,7 @@ $("generate-btn").addEventListener("click", () => {
 $("refine-btn").addEventListener("click", () => {
   const refinement = $("refine-input").value.trim();
   if (!refinement || !state.turns.length) return;
-  callApi({ history: state.turns, refinement }, $("refine-btn"));
+  callGenerate({ history: state.turns, refinement }, $("refine-btn"));
   $("refine-input").value = "";
 });
 $("refine-input").addEventListener("keydown", (e) => {
@@ -153,15 +289,11 @@ function renderDesign() {
   note.textContent = analysis;
   note.hidden = false;
   $("result-actions").hidden = false;
+  $("canva-hint").hidden = false;
   $("refine-box").hidden = false;
 }
 
-$("export-html").addEventListener("click", () => {
-  const blob = new Blob([fullDocument()], { type: "text/html" });
-  triggerDownload(URL.createObjectURL(blob), "creative.html");
-});
-
-$("export-png").addEventListener("click", async () => {
+async function rasterize() {
   const { width, height } = state.design;
   // Render the artboard off-screen at full size, wait for its fonts, then rasterize.
   const host = document.createElement("div");
@@ -171,15 +303,35 @@ $("export-png").addEventListener("click", async () => {
   try {
     await document.fonts.ready;
     await new Promise((r) => setTimeout(r, 400)); // give @import fonts a beat to apply
-    const canvas = await html2canvas(host.firstElementChild, {
-      width, height, scale: 1, backgroundColor: null, useCORS: true,
+    return await html2canvas(host.firstElementChild, {
+      width, height, scale: 1, backgroundColor: "#ffffff", useCORS: true,
     });
-    triggerDownload(canvas.toDataURL("image/png"), "creative.png");
-  } catch (err) {
-    setStatus(`PNG export failed: ${err.message}. Use "Download HTML" and screenshot it instead.`, true);
   } finally {
     host.remove();
   }
+}
+
+$("export-png").addEventListener("click", async () => {
+  try {
+    const canvas = await rasterize();
+    triggerDownload(canvas.toDataURL("image/png"), "creative.png");
+  } catch (err) {
+    setStatus(`PNG export failed: ${err.message}. Use "HTML" and screenshot it instead.`, true);
+  }
+});
+
+$("export-jpeg").addEventListener("click", async () => {
+  try {
+    const canvas = await rasterize();
+    triggerDownload(canvas.toDataURL("image/jpeg", 0.92), "creative.jpg");
+  } catch (err) {
+    setStatus(`JPEG export failed: ${err.message}. Use "HTML" and screenshot it instead.`, true);
+  }
+});
+
+$("export-html").addEventListener("click", () => {
+  const blob = new Blob([fullDocument()], { type: "text/html" });
+  triggerDownload(URL.createObjectURL(blob), "creative.html");
 });
 
 function triggerDownload(url, filename) {

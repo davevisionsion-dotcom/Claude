@@ -27,13 +27,14 @@
 
       <h2>2 · Client brand kit</h2>
       <div class="grid2">
-        <label>Brand name
+        <label>Brand / company name
           <input type="text" id="brand-name" placeholder="e.g. Bloom Coffee Co." />
         </label>
         <label>Logo (optional)
           <input type="file" id="logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
         </label>
       </div>
+      <button id="research-btn" class="secondary">🔎 Research this brand online</button>
 
       <div class="grid3">
         <label>Primary <input type="color" id="color-primary" value="#1e3a8a" /></label>
@@ -45,6 +46,19 @@
         <label><input type="radio" name="treatment" value="plain" checked /> Plain colors</label>
         <label><input type="radio" name="treatment" value="gradient" /> Gradient</label>
       </div>
+
+      <label>Background
+        <input type="text" id="background" list="background-suggestions"
+               placeholder="e.g. brand gradient / solid primary / light neutral / photo placeholder" />
+        <datalist id="background-suggestions">
+          <option>Solid primary color</option>
+          <option>Brand gradient</option>
+          <option>Light neutral</option>
+          <option>Dark and moody</option>
+          <option>Soft pattern of brand shapes</option>
+          <option>Photo placeholder</option>
+        </datalist>
+      </label>
 
       <div class="grid2">
         <label>Heading font
@@ -67,7 +81,7 @@
         <label><input type="checkbox" id="style-underline" /> <u>Underline</u></label>
       </div>
 
-      <label>Extra brand notes (voice, do's &amp; don'ts…)
+      <label>Brand description / notes (voice, do's &amp; don'ts…)
         <textarea id="brand-notes" rows="2" placeholder="e.g. friendly but premium, never use emojis, rounded corners everywhere"></textarea>
       </label>
 
@@ -76,8 +90,26 @@
         <textarea id="brief" rows="3" placeholder="e.g. Announcing our new oat-milk latte, 20% off this weekend at the Makati branch"></textarea>
       </label>
 
+      <label>Additional instructions for the AI (optional)
+        <textarea id="instructions" rows="2" placeholder="e.g. keep the layout minimal, always include the tagline 'Brewed with love', CTA button bottom center"></textarea>
+      </label>
+
       <button id="generate-btn" class="primary">✦ Generate on-brand creative</button>
       <div id="status" class="status" hidden></div>
+    </section>
+
+    <!-- ============ MIDDLE: ASSISTANT ============ -->
+    <section class="panel assistant">
+      <h2>Brand assistant</h2>
+      <p class="hint">Researches your client online, confirms it's the right company, fills in the brand kit, and asks the questions a designer would ask — before anything is generated.</p>
+      <div id="chat-log" class="chat-log">
+        <div class="msg assistant-msg">Hi! Type your client's brand name on the left and hit <b>Research this brand online</b> — or just ask me anything about the creative you're planning.</div>
+      </div>
+      <div id="ready-banner" class="ready-banner" hidden>✓ Plan confirmed — hit <b>Generate</b> when you're ready.</div>
+      <div class="chat-input">
+        <input type="text" id="chat-text" placeholder="Reply to the assistant…" />
+        <button id="chat-send">Send</button>
+      </div>
     </section>
 
     <!-- ============ RIGHT: RESULT ============ -->
@@ -90,9 +122,11 @@
       <p id="analysis" class="analysis" hidden></p>
 
       <div class="row" id="result-actions" hidden>
-        <button id="export-png">⬇ Export PNG</button>
-        <button id="export-html">⬇ Download HTML</button>
+        <button id="export-png">⬇ PNG</button>
+        <button id="export-jpeg">⬇ JPEG</button>
+        <button id="export-html">⬇ HTML</button>
       </div>
+      <p class="hint" id="canva-hint" hidden>To edit in Canva: download the PNG/JPEG and drag it into your Canva design. (Native editable-Canva export needs the Canva Connect API — planned.)</p>
 
       <div id="refine-box" class="refine" hidden>
         <label>Refine it
