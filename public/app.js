@@ -325,6 +325,14 @@ async function callGenerate(body, button) {
     state.turns = json.turns;
     renderDesign();
     setStatus("");
+    // Clear handoff: design changes now belong to the Refine box, not the chat.
+    if (state.chatTurns.length && !state.handoffNoted) {
+      state.handoffNoted = true;
+      addChatMessage(
+        "✅ Design generated! To change THIS design, use the Refine box under the result on the right. Use this chat only to plan your next creative — then hit Generate again.",
+        "assistant"
+      );
+    }
   } catch (err) {
     setStatus(err.message, true);
   } finally {
@@ -335,6 +343,14 @@ async function callGenerate(body, button) {
 
 $("generate-btn").addEventListener("click", () => {
   if (!state.image) { setStatus("Paste or drop an inspiration screenshot first.", true); return; }
+  // Handoff guard: if a planning conversation is running but not confirmed,
+  // check before spending a generation on an unconfirmed plan.
+  if (state.chatTurns.length && !state.chatSummary) {
+    const go = confirm(
+      "The assistant hasn't confirmed the plan yet — it may still have questions for you.\n\nGenerate anyway?"
+    );
+    if (!go) return;
+  }
   $("generate-btn").classList.remove("pulse");
   state.currentVariant = 0;
   callGenerate(
