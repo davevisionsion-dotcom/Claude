@@ -1,9 +1,27 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Anthropic from "@anthropic-ai/sdk";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+// Load settings from config.txt or .env so non-technical users can just
+// edit a text file instead of setting environment variables. Real
+// environment variables still win.
+for (const filename of ["config.txt", ".env"]) {
+  try {
+    for (const line of fs.readFileSync(path.join(here, filename), "utf8").split("\n")) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"?([^"\r\n]*)"?\s*$/);
+      if (m && m[2] && !m[2].startsWith("paste-") && !process.env[m[1]]) {
+        process.env[m[1]] = m[2].trim();
+      }
+    }
+  } catch {
+    // file not present — fine
+  }
+}
+
 const PORT = process.env.PORT || 3000;
 const MODEL = "claude-opus-4-8";
 
