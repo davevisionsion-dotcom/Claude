@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BrandForge — on-brand creative from any inspiration</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Brand<span>Forge</span></h1>
+    <p>Paste an inspiration screenshot → get it recreated in your client's branding</p>
+  </header>
+
+  <main>
+    <!-- ============ LEFT: INPUTS ============ -->
+    <section class="panel inputs">
+      <h2>1 · Inspiration</h2>
+      <div id="dropzone" class="dropzone" tabindex="0">
+        <img id="inspo-preview" alt="" hidden />
+        <div id="dropzone-hint">
+          <strong>Paste</strong> a screenshot here (Ctrl/Cmd+V),<br />
+          drag &amp; drop, or <label class="linklike" for="file-input">browse</label>
+        </div>
+        <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+      </div>
+
+      <h2>2 · Client brand kit</h2>
+      <div class="grid2">
+        <label>Brand name
+          <input type="text" id="brand-name" placeholder="e.g. Bloom Coffee Co." />
+        </label>
+        <label>Logo (optional)
+          <input type="file" id="logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+        </label>
+      </div>
+
+      <div class="grid3">
+        <label>Primary <input type="color" id="color-primary" value="#1e3a8a" /></label>
+        <label>Secondary <input type="color" id="color-secondary" value="#f59e0b" /></label>
+        <label>Accent <input type="color" id="color-accent" value="#ffffff" /></label>
+      </div>
+
+      <div class="row checks">
+        <label><input type="radio" name="treatment" value="plain" checked /> Plain colors</label>
+        <label><input type="radio" name="treatment" value="gradient" /> Gradient</label>
+      </div>
+
+      <div class="grid2">
+        <label>Heading font
+          <input type="text" id="font-heading" placeholder="e.g. Playfair Display" list="font-suggestions" />
+        </label>
+        <label>Body font
+          <input type="text" id="font-body" placeholder="e.g. Inter" list="font-suggestions" />
+        </label>
+        <datalist id="font-suggestions">
+          <option>Inter</option><option>Poppins</option><option>Montserrat</option>
+          <option>Playfair Display</option><option>DM Serif Display</option><option>Bebas Neue</option>
+          <option>Lora</option><option>Raleway</option><option>Oswald</option><option>Fraunces</option>
+        </datalist>
+      </div>
+
+      <div class="row checks">
+        <span>Text emphasis:</span>
+        <label><input type="checkbox" id="style-bold" checked /> <b>Bold</b></label>
+        <label><input type="checkbox" id="style-italic" /> <i>Italic</i></label>
+        <label><input type="checkbox" id="style-underline" /> <u>Underline</u></label>
+      </div>
+
+      <label>Extra brand notes (voice, do's &amp; don'ts…)
+        <textarea id="brand-notes" rows="2" placeholder="e.g. friendly but premium, never use emojis, rounded corners everywhere"></textarea>
+      </label>
+
+      <h2>3 · What is this post about?</h2>
+      <label>
+        <textarea id="brief" rows="3" placeholder="e.g. Announcing our new oat-milk latte, 20% off this weekend at the Makati branch"></textarea>
+      </label>
+
+      <button id="generate-btn" class="primary">✦ Generate on-brand creative</button>
+      <div id="status" class="status" hidden></div>
+    </section>
+
+    <!-- ============ RIGHT: RESULT ============ -->
+    <section class="panel result">
+      <h2>Result</h2>
+      <div id="preview-wrap" class="preview-wrap">
+        <div id="preview-empty">Your recreated creative will appear here.</div>
+        <iframe id="preview" title="Generated creative" sandbox="allow-same-origin" hidden></iframe>
+      </div>
+      <p id="analysis" class="analysis" hidden></p>
+
+      <div class="row" id="result-actions" hidden>
+        <button id="export-png">⬇ Export PNG</button>
+        <button id="export-html">⬇ Download HTML</button>
+      </div>
+
+      <div id="refine-box" class="refine" hidden>
+        <label>Refine it
+          <input type="text" id="refine-input" placeholder='e.g. "make the headline bigger and move the logo to the top right"' />
+        </label>
+        <button id="refine-btn">Apply</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

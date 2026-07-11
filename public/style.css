@@ -1,0 +1,165 @@
+* { box-sizing: border-box; }
+
+:root {
+  --bg: #0f1117;
+  --panel: #181b24;
+  --panel-2: #1f2330;
+  --line: #2b3040;
+  --text: #e8eaf0;
+  --muted: #9aa1b5;
+  --brand: #7c6cf0;
+  --brand-2: #4bd0c0;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+header {
+  padding: 20px 28px 6px;
+}
+header h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.5px;
+}
+header h1 span { color: var(--brand); }
+header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+
+main {
+  display: grid;
+  grid-template-columns: minmax(340px, 480px) 1fr;
+  gap: 20px;
+  padding: 20px 28px 40px;
+  align-items: start;
+}
+@media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+}
+.panel h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  margin: 18px 0 10px;
+}
+.panel h2:first-child { margin-top: 0; }
+
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+input[type="text"], textarea {
+  width: 100%;
+  margin-top: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+input[type="color"] {
+  width: 100%;
+  height: 38px;
+  margin-top: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 3px;
+  cursor: pointer;
+}
+input[type="file"] { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--text); }
+.checks span { font-size: 13px; color: var(--muted); }
+
+.dropzone {
+  position: relative;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.dropzone:hover, .dropzone:focus, .dropzone.dragover { border-color: var(--brand); outline: none; }
+.dropzone img { max-width: 100%; max-height: 260px; display: block; }
+.dropzone img:not([hidden]) + #dropzone-hint { display: none; }
+.linklike { display: inline; color: var(--brand); text-decoration: underline; cursor: pointer; }
+
+button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--brand); }
+button.primary {
+  width: 100%;
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  border: none;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 13px;
+}
+button:disabled { opacity: 0.55; cursor: wait; }
+
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.status.error { color: #ff8f8f; border-color: #5c2b2b; }
+
+.preview-wrap {
+  background:
+    repeating-conic-gradient(#20242f 0% 25%, #262b38 0% 50%) 0 0 / 24px 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#preview-empty { color: var(--muted); font-size: 14px; }
+#preview { border: 0; background: transparent; }
+
+.analysis {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  background: var(--panel-2);
+  border-left: 3px solid var(--brand);
+  padding: 10px 12px;
+  border-radius: 0 8px 8px 0;
+}
+
+.refine { display: flex; gap: 10px; align-items: end; margin-top: 14px; }
+.refine label { flex: 1; margin: 0; }
+.refine button { white-space: nowrap; height: 38px; }

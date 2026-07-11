@@ -1,0 +1,17 @@
+{
+  "name": "brandforge",
+  "version": "0.1.0",
+  "description": "AI creative studio: paste an inspiration screenshot, get it recreated in your client's branding",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "express": "^4.22.2"
+  }
+}
