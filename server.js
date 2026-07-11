@@ -32,7 +32,11 @@ Rules for every recreation:
   * free — take only the mood and energy of the inspiration; design the layout freely.
 - Apply the client's brand kit exactly: their colors (respect the plain-vs-gradient choice), their background preference, their heading and body fonts, and their text style preferences (bold / italic / underline emphasis).
 - Follow the client's additional instructions to the letter. If an instruction conflicts with the inspiration's layout, the instruction wins for that specific point — but preserve every aspect of the inspiration's composition the instructions do NOT explicitly change. Never let a small instruction justify redesigning the whole layout.
-- Where the inspiration uses photography or illustration, create tasteful CSS/SVG graphics (shapes, gradients, patterns, simple inline SVG illustrations) that fit the topic — or a clearly marked placeholder area the designer can drop a photo into, styled so the composition still reads correctly.
+- Where the inspiration uses photography, adapt the SUBJECT to the client's topic (a laptop in the inspiration becomes a leadership-related photo when the post is about leadership). Keep the photo's size, position, crop, and any overlay/duotone/shadow treatment identical to the inspiration. Image source priority:
+  1. If the brief says the CLIENT PROVIDED A PHOTO: place <img src="{{USER_PHOTO}}" alt="..."> with object-fit: cover in the main image slot, sized and positioned like the inspiration's image. Match the inspiration's visual treatment as closely as CSS allows — crop, rounded corners/masking, duotone or color-wash overlays (a positioned pseudo-element or overlay div with mix-blend-mode), grayscale/contrast/saturation filters, borders, shadows.
+  2. Otherwise, if stock photos are ENABLED: place <img src="{{PHOTO_1}}" alt="..."> (then {{PHOTO_2}}, ...) with object-fit: cover, and list every token in "photos" with a 2-5 word stock-photo search query matching the CLIENT'S TOPIC. Also apply the inspiration's visual treatment via CSS as above.
+  3. Otherwise: create a tasteful CSS/SVG illustration of the topic, or a clearly marked placeholder region the designer can drop a photo into, styled so the composition still reads correctly. Never emit {{PHOTO_n}} tokens when stock photos are disabled.
+- Where the inspiration uses illustration or abstract graphics, recreate the same kind of graphic with inline CSS/SVG in the brand colors.
 - If the brand kit says a logo was provided, place an <img src="{{LOGO_SRC}}" alt="logo"> element (the application substitutes the real logo file into that exact token) sized and positioned the way the inspiration treats its logo/brand mark.
 - Load fonts with a Google Fonts @import at the top of the <style> block when the requested fonts are Google Fonts; otherwise use the closest widely available fallback stack and say so in your analysis.
 
@@ -58,17 +62,57 @@ const OUTPUT_SCHEMA = {
       description:
         "Self-contained HTML fragment: one <div class=\"artboard\"> with an inline <style> tag, fixed pixel size, all CSS scoped under .artboard.",
     },
+    photos: {
+      type: "array",
+      description:
+        "One entry per {{PHOTO_n}} token used in the html. Empty array when stock photos are disabled or the design uses none.",
+      items: {
+        type: "object",
+        properties: {
+          token: {
+            type: "string",
+            description: "The exact token used in the html, e.g. {{PHOTO_1}}",
+          },
+          query: {
+            type: "string",
+            description: "2-5 word stock-photo search query matching the client's topic",
+          },
+        },
+        required: ["token", "query"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["analysis", "width", "height", "html"],
+  required: ["analysis", "width", "height", "html", "photos"],
   additionalProperties: false,
 };
 
-function brandBrief(brand, brief, chatContext) {
+function backgroundLine(bg) {
+  if (!bg) return "same as the inspiration's background — match its color and mood exactly";
+  if (typeof bg === "string") return bg;
+  switch (bg.mode) {
+    case "solid":
+      return `solid ${bg.color1}`;
+    case "gradient":
+      return `gradient from ${bg.color1} to ${bg.color2}`;
+    case "describe":
+      return bg.text || "designer's choice, guided by the inspiration";
+    default:
+      return "same as the inspiration's background — match its color and mood exactly";
+  }
+}
+
+function brandBrief(brand, brief, chatContext, photosEnabled) {
   const fidelity = ["strict", "balanced", "free"].includes(brand.fidelity)
     ? brand.fidelity
     : "balanced";
   const lines = [
     `LAYOUT FIDELITY: ${fidelity}`,
+    `STOCK PHOTOS: ${
+      photosEnabled
+        ? "ENABLED — use {{PHOTO_n}} tokens and fill the photos array with topic-matched search queries"
+        : "DISABLED — use CSS/SVG illustration or a styled placeholder; no {{PHOTO_n}} tokens"
+    }`,
     ``,
     `CLIENT BRAND KIT`,
     `- Brand name: ${brand.name || "(not given)"}`,
@@ -77,10 +121,12 @@ function brandBrief(brand, brief, chatContext) {
     `- Accent color: ${brand.accent}`,
     `- Color treatment: ${
       brand.gradient
-        ? `gradient (blend the brand colors into smooth gradients where the inspiration uses large color fields)`
+        ? `gradient, blending from ${brand.gradientFrom || brand.primary} to ${
+            brand.gradientTo || brand.secondary
+          } where the inspiration uses large color fields`
         : `plain, flat color fields`
     }`,
-    `- Background preference: ${brand.background || "designer's choice, guided by the inspiration"}`,
+    `- Background: ${backgroundLine(brand.background)}`,
     `- Heading font: ${brand.headingFont || "designer's choice"}`,
     `- Body font: ${brand.bodyFont || "designer's choice"}`,
     `- Text emphasis styles to favor: ${
@@ -96,6 +142,11 @@ function brandBrief(brand, brief, chatContext) {
       brand.hasLogo
         ? "provided — place it using the {{LOGO_SRC}} token"
         : "none provided — use the brand name as a typographic mark if the layout calls for one"
+    }`,
+    `- Client photo for the design: ${
+      brand.hasUserPhoto
+        ? "PROVIDED — place it with the {{USER_PHOTO}} token in the main image slot, styled like the inspiration's image"
+        : "none — source imagery per the stock-photo setting above"
     }`,
   ];
   if (brand.notes) lines.push(`- Brand description / notes: ${brand.notes}`);
@@ -149,7 +200,10 @@ app.post("/api/generate", async (req, res) => {
               data: image.data,
             },
           },
-          { type: "text", text: brandBrief(brand || {}, brief, chatContext) },
+          {
+            type: "text",
+            text: brandBrief(brand || {}, brief, chatContext, Boolean(process.env.PEXELS_API_KEY)),
+          },
         ],
       },
     ];
@@ -186,9 +240,11 @@ app.post("/api/generate", async (req, res) => {
 
     const text = final.content.find((b) => b.type === "text")?.text ?? "";
     const design = JSON.parse(text);
+    const photoUrls = await resolvePhotos(design.photos);
 
     res.json({
       design,
+      photoUrls,
       // Client stores these and sends them back for refinement rounds.
       // final.content is echoed verbatim so thinking blocks survive the round-trip.
       turns: [...messages, { role: "assistant", content: final.content }],
@@ -198,6 +254,33 @@ app.post("/api/generate", async (req, res) => {
     handleApiError(error, res);
   }
 });
+
+/**
+ * Turn the design's photo requests into real stock-photo URLs via Pexels.
+ * Requires PEXELS_API_KEY (free at https://www.pexels.com/api/). Without it,
+ * the design was already generated with placeholders instead of tokens.
+ */
+async function resolvePhotos(photos) {
+  const key = process.env.PEXELS_API_KEY;
+  const map = {};
+  if (!key || !Array.isArray(photos)) return map;
+  for (const p of photos) {
+    if (!p?.token || !p?.query) continue;
+    try {
+      const r = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(p.query)}&per_page=1`,
+        { headers: { Authorization: key } }
+      );
+      if (!r.ok) continue;
+      const j = await r.json();
+      const url = j.photos?.[0]?.src?.large2x || j.photos?.[0]?.src?.large;
+      if (url) map[p.token] = url;
+    } catch {
+      // leave unresolved — the frontend substitutes a placeholder
+    }
+  }
+  return map;
+}
 
 /* ================================================================
    BRAND ASSISTANT (chat + web research)

@@ -3,13 +3,31 @@
 const $ = (id) => document.getElementById(id);
 
 const state = {
-  image: null,        // { media_type, data }  — the inspiration screenshot
-  logoDataUrl: null,  // data: URL substituted into {{LOGO_SRC}}
-  design: null,       // { analysis, width, height, html }
+  image: null,           // { media_type, data }  — the inspiration screenshot
+  logoDataUrl: null,     // data: URL substituted into {{LOGO_SRC}}
+  userPhotoDataUrl: null, // data: URL substituted into {{USER_PHOTO}}
+  design: null,       // { analysis, width, height, html, photos }
+  photoUrls: {},      // {{PHOTO_n}} token -> stock photo URL
   turns: [],          // design conversation history for refinement rounds
   chatTurns: [],      // assistant conversation history
   chatSummary: null,  // confirmed plan from the assistant, passed to generation
 };
+
+/* ---------- conditional form controls ---------- */
+
+function updateColorControls() {
+  const gradient = document.querySelector('input[name="treatment"]:checked').value === "gradient";
+  $("gradient-colors").hidden = !gradient;
+  const mode = $("bg-mode").value;
+  $("bg-colors").hidden = !(mode === "solid" || mode === "gradient");
+  $("bg-color2-label").hidden = mode !== "gradient";
+  $("bg-text-label").hidden = mode !== "describe";
+}
+document.querySelectorAll('input[name="treatment"]').forEach((r) =>
+  r.addEventListener("change", updateColorControls)
+);
+document.getElementById("bg-mode").addEventListener("change", updateColorControls);
+updateColorControls();
 
 /* ---------- inspiration screenshot: paste / drop / browse ---------- */
 
@@ -50,6 +68,14 @@ $("logo-input").addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
+$("photo-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) { state.userPhotoDataUrl = null; return; }
+  const reader = new FileReader();
+  reader.onload = () => { state.userPhotoDataUrl = reader.result; };
+  reader.readAsDataURL(file);
+});
+
 /* ---------- form <-> state ---------- */
 
 function collectBrand() {
@@ -59,14 +85,22 @@ function collectBrand() {
     secondary: $("color-secondary").value,
     accent: $("color-accent").value,
     gradient: document.querySelector('input[name="treatment"]:checked').value === "gradient",
+    gradientFrom: $("gradient-from").value,
+    gradientTo: $("gradient-to").value,
     fidelity: document.querySelector('input[name="fidelity"]:checked').value,
-    background: $("background").value.trim(),
+    background: {
+      mode: $("bg-mode").value,
+      color1: $("bg-color1").value,
+      color2: $("bg-color2").value,
+      text: $("bg-text").value.trim(),
+    },
     headingFont: $("font-heading").value.trim(),
     bodyFont: $("font-body").value.trim(),
     bold: $("style-bold").checked,
     italic: $("style-italic").checked,
     underline: $("style-underline").checked,
     hasLogo: Boolean(state.logoDataUrl),
+    hasUserPhoto: Boolean(state.userPhotoDataUrl),
     notes: $("brand-notes").value.trim(),
     instructions: $("instructions").value.trim(),
   };
@@ -102,7 +136,13 @@ function applyUpdates(updates) {
     document.querySelector(`input[name="treatment"][value="${updates.gradient ? "gradient" : "plain"}"]`).checked = true;
     applied.push(updates.gradient ? "gradient treatment" : "plain colors");
   }
-  setText("background", updates.background, "background");
+  if (typeof updates.background === "string") {
+    $("bg-mode").value = "describe";
+    $("bg-text").value = updates.background;
+    updateColorControls();
+    flash("bg-text");
+    applied.push("background");
+  }
   setText("font-heading", updates.headingFont, "heading font");
   setText("font-body", updates.bodyFont, "body font");
   setCheck("style-bold", updates.bold, "bold");
@@ -218,6 +258,7 @@ async function callGenerate(body, button) {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
     state.design = json.design;
+    state.photoUrls = json.photoUrls || {};
     state.turns = json.turns;
     renderDesign();
     setStatus("");
@@ -255,9 +296,21 @@ $("refine-input").addEventListener("keydown", (e) => {
 
 /* ---------- rendering & export ---------- */
 
+const PHOTO_FALLBACK =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'>" +
+      "<rect width='100%' height='100%' fill='#d7dbe4'/>" +
+      "<text x='50%' y='50%' font-family='sans-serif' font-size='30' fill='#747b8c' text-anchor='middle'>drop your photo here</text>" +
+      "</svg>"
+  );
+
 function artboardHtml() {
   let html = state.design.html;
   if (state.logoDataUrl) html = html.replaceAll("{{LOGO_SRC}}", state.logoDataUrl);
+  if (state.userPhotoDataUrl) html = html.replaceAll("{{USER_PHOTO}}", state.userPhotoDataUrl);
+  html = html.replace(/\{\{PHOTO_\d+\}\}/g, (token) => state.photoUrls[token] || PHOTO_FALLBACK);
+  html = html.replaceAll("{{USER_PHOTO}}", PHOTO_FALLBACK);
   return html;
 }
 

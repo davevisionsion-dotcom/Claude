@@ -27,8 +27,8 @@
 
       <div class="row checks fidelity">
         <span>Copy the layout:</span>
-        <label title="Same placement, sizes, and background mood — only branding and copy change"><input type="radio" name="fidelity" value="strict" /> Strictly</label>
-        <label title="Keep the structure, adapt where the brand needs it"><input type="radio" name="fidelity" value="balanced" checked /> Balanced</label>
+        <label title="Same placement, sizes, and background mood — only branding, copy, and photo subjects change"><input type="radio" name="fidelity" value="strict" checked /> Strictly</label>
+        <label title="Keep the structure, adapt where the brand needs it"><input type="radio" name="fidelity" value="balanced" /> Balanced</label>
         <label title="Just take the vibe, design freely"><input type="radio" name="fidelity" value="free" /> Loosely</label>
       </div>
 
@@ -41,6 +41,9 @@
           <input type="file" id="logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
         </label>
       </div>
+      <label>Your photo for inside the design (optional — otherwise the AI picks/creates imagery to match the topic)
+        <input type="file" id="photo-input" accept="image/png,image/jpeg,image/webp" />
+      </label>
       <button id="research-btn" class="secondary">🔎 Research this brand online</button>
 
       <div class="grid3">
@@ -53,18 +56,25 @@
         <label><input type="radio" name="treatment" value="plain" checked /> Plain colors</label>
         <label><input type="radio" name="treatment" value="gradient" /> Gradient</label>
       </div>
+      <div class="grid2" id="gradient-colors" hidden>
+        <label>Gradient from <input type="color" id="gradient-from" value="#1e3a8a" /></label>
+        <label>Gradient to <input type="color" id="gradient-to" value="#f59e0b" /></label>
+      </div>
 
       <label>Background
-        <input type="text" id="background" list="background-suggestions"
-               placeholder="e.g. brand gradient / solid primary / light neutral / photo placeholder" />
-        <datalist id="background-suggestions">
-          <option>Solid primary color</option>
-          <option>Brand gradient</option>
-          <option>Light neutral</option>
-          <option>Dark and moody</option>
-          <option>Soft pattern of brand shapes</option>
-          <option>Photo placeholder</option>
-        </datalist>
+        <select id="bg-mode">
+          <option value="inspiration" selected>Match the inspiration's background</option>
+          <option value="solid">Solid color (pick below)</option>
+          <option value="gradient">Gradient (pick below)</option>
+          <option value="describe">Describe it myself</option>
+        </select>
+      </label>
+      <div class="grid2" id="bg-colors" hidden>
+        <label>Background color <input type="color" id="bg-color1" value="#101322" /></label>
+        <label id="bg-color2-label" hidden>…to <input type="color" id="bg-color2" value="#2b3040" /></label>
+      </div>
+      <label id="bg-text-label" hidden>Describe the background
+        <input type="text" id="bg-text" placeholder="e.g. soft beige paper texture with subtle brand shapes" />
       </label>
 
       <div class="grid2">
