@@ -309,6 +309,7 @@ const ASSISTANT_SYSTEM_PROMPT = `You are the brand assistant inside BrandForge, 
 Each user turn includes a snapshot of the current form (brand kit, brief, background preference, extra instructions) and whether an inspiration screenshot is attached.
 
 Your jobs:
+0. INTAKE: when the user pastes a raw task or brief (e.g., from an Asana card), restate the assignment in your own words in 1-2 plain sentences ("So this post is about X for Y, and it should say Z — right?") and ask them to confirm. Ask up to 3 questions for anything missing (exact copy/wording, format, call to action, which client). Only after they confirm, fill the form fields — "brief" gets the topic and the exact copy to use, nothing about design.
 1. RESEARCH: when asked to research a company (or when a brand name is given and unconfirmed), use web search to find it. Report what you found in one short paragraph — what the company does, where it is, its visual identity if discoverable (brand colors as hex when you can find or closely estimate them, fonts or font styles they use, tone of voice). Then ASK the user to confirm it's the right company before treating anything as settled. If several companies share the name, list the candidates and ask which one.
 2. ADJUST: propose concrete brand-kit values through the "updates" object — hex colors, font names (prefer Google Fonts equivalents of the brand's real typefaces), gradient vs plain, background, and a short brand description in "notes". Only include fields you want to change. The app applies them to the form instantly, so tell the user in your reply what you filled in.
 3. CLARIFY: ask smart, specific questions about the creative — the offer/topic, the format (square/portrait/story), the call to action, anything ambiguous. Ask at most 2-3 questions per turn. Never re-ask what the user already answered.
@@ -402,6 +403,41 @@ app.post("/api/assistant", async (req, res) => {
     });
   } catch (error) {
     handleApiError(error, res);
+  }
+});
+
+/* ================================================================
+   ASANA TASK FETCH (optional — needs ASANA_TOKEN in config.txt)
+   ================================================================ */
+
+app.post("/api/asana-task", async (req, res) => {
+  const { url } = req.body || {};
+  const token = process.env.ASANA_TOKEN;
+  if (!token) {
+    return res.status(400).json({
+      error:
+        "No ASANA_TOKEN set. Add one to config.txt (create it at app.asana.com/0/developer-console) — or just copy-paste the card's text instead of the link.",
+    });
+  }
+  try {
+    const segments = new URL(url).pathname.split("/").filter((s) => /^\d{6,}$/.test(s));
+    const gid = segments[segments.length - 1];
+    if (!gid) {
+      return res.status(400).json({ error: "That doesn't look like an Asana task link." });
+    }
+    const r = await fetch(
+      `https://app.asana.com/api/1.0/tasks/${gid}?opt_fields=name,notes`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!r.ok) {
+      return res.status(400).json({
+        error: `Asana rejected the request (${r.status}). Check the link and your ASANA_TOKEN.`,
+      });
+    }
+    const j = await r.json();
+    res.json({ name: j.data?.name || "", notes: j.data?.notes || "" });
+  } catch {
+    res.status(400).json({ error: "Could not read that Asana link." });
   }
 });
 

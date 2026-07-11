@@ -215,6 +215,37 @@ async function sendToAssistant(userMessage) {
   }
 }
 
+$("task-btn").addEventListener("click", async () => {
+  let task = $("task-input").value.trim();
+  if (!task) {
+    addChatMessage("Paste your task (Asana link or the card's text) into the box above first.", "assistant");
+    return;
+  }
+  // If it's an Asana link, fetch the card's title + description first.
+  if (/https?:\/\/app\.asana\.com\//.test(task)) {
+    $("task-btn").disabled = true;
+    try {
+      const res = await fetch("/api/asana-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: task.match(/https?:\/\/app\.asana\.com\/\S+/)[0] }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      task = `TITLE: ${json.name}\n\nDETAILS:\n${json.notes || "(no description on the card)"}`;
+    } catch (err) {
+      addChatMessage(`⚠ ${err.message}`, "assistant");
+      $("task-btn").disabled = false;
+      return;
+    }
+    $("task-btn").disabled = false;
+  }
+  $("task-input").value = "";
+  sendToAssistant(
+    `Here is my task card:\n\n${task}\n\nRestate in your own words what this post is about and confirm with me. Ask me for anything missing (exact wording, format, CTA). Once I confirm, fill the form — topic and copy only in the brief, keep instructions minimal, and let the inspiration screenshot drive the design.`
+  );
+});
+
 $("research-btn").addEventListener("click", () => {
   const name = $("brand-name").value.trim();
   if (!name) {

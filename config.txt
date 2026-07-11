@@ -12,3 +12,8 @@
 #
 ANTHROPIC_API_KEY=paste-your-anthropic-key-here
 PEXELS_API_KEY=
+
+# Optional: lets you paste Asana task LINKS instead of copying card text.
+# Create a Personal Access Token at https://app.asana.com/0/developer-console
+ASANA_TOKEN=
+
