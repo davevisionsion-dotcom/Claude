@@ -59,6 +59,7 @@ function collectBrand() {
     secondary: $("color-secondary").value,
     accent: $("color-accent").value,
     gradient: document.querySelector('input[name="treatment"]:checked').value === "gradient",
+    fidelity: document.querySelector('input[name="fidelity"]:checked').value,
     background: $("background").value.trim(),
     headingFont: $("font-heading").value.trim(),
     bodyFont: $("font-body").value.trim(),
