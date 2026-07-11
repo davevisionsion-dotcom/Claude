@@ -162,6 +162,24 @@ function flash(id) {
 
 /* ---------- assistant chat ---------- */
 
+const CHECKLIST_ITEMS = [
+  ["client", "Client"],
+  ["topic", "Topic"],
+  ["copy", "Wording"],
+  ["format", "Size"],
+  ["musts", "Must-haves"],
+];
+
+function renderChecklist(checklist) {
+  if (!checklist) return;
+  const wrap = $("plan-checklist");
+  wrap.hidden = false;
+  wrap.innerHTML = CHECKLIST_ITEMS.map(
+    ([key, label]) =>
+      `<span class="chip${checklist[key] ? " done" : ""}">${checklist[key] ? "✓" : "○"} ${label}</span>`
+  ).join("");
+}
+
 function addChatMessage(text, who) {
   const div = document.createElement("div");
   div.className = `msg ${who}-msg`;
@@ -192,6 +210,7 @@ async function sendToAssistant(userMessage) {
     if (!res.ok) throw new Error(json.error || `Assistant request failed (${res.status})`);
 
     state.chatTurns = json.turns;
+    renderChecklist(json.checklist);
     const applied = applyUpdates(json.updates);
     thinking.textContent = json.reply || "(no reply)";
     if (applied.length) {
