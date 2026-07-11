@@ -324,7 +324,9 @@ Response contract (strict): respond ONLY with a single JSON object, no other tex
 
 Allowed keys in "updates": name (string), primary (hex), secondary (hex), accent (hex), gradient (boolean), background (string), headingFont (string), bodyFont (string), bold (boolean), italic (boolean), underline (boolean), notes (string), instructions (string), brief (string).
 
-Never invent confirmation — status stays "asking" until the USER has explicitly confirmed the company identity (or said to skip research) and answered your key questions.`;
+Never invent confirmation — status stays "asking" until the USER has explicitly confirmed the company identity (or said to skip research) and answered your key questions.
+
+Field-writing rules: keep "brief" to the topic, the copy/text to use, and the format — no design directions. Keep "instructions" to at most 1-2 short sentences, and only for changes the user explicitly asked for. Never write art-direction specs (layout, illustration style, what to remove) into these fields — the inspiration screenshot defines the design, and long instructions override it.`;
 
 function extractJson(blocks) {
   const text = blocks
