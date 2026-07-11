@@ -6,7 +6,8 @@ const state = {
   image: null,           // { media_type, data }  — the inspiration screenshot
   logoDataUrl: null,     // data: URL substituted into {{LOGO_SRC}}
   userPhotoDataUrl: null, // data: URL substituted into {{USER_PHOTO}}
-  design: null,       // { analysis, width, height, html, photos }
+  design: null,       // { analysis, width, height, variants: [{label, html, photos}] }
+  currentVariant: 0,  // which variant is shown/exported
   photoUrls: {},      // {{PHOTO_n}} token -> stock photo URL
   turns: [],          // design conversation history for refinement rounds
   chatTurns: [],      // assistant conversation history
@@ -16,18 +17,37 @@ const state = {
 /* ---------- conditional form controls ---------- */
 
 function updateColorControls() {
-  const gradient = document.querySelector('input[name="treatment"]:checked').value === "gradient";
-  $("gradient-colors").hidden = !gradient;
   const mode = $("bg-mode").value;
   $("bg-colors").hidden = !(mode === "solid" || mode === "gradient");
   $("bg-color2-label").hidden = mode !== "gradient";
   $("bg-text-label").hidden = mode !== "describe";
 }
-document.querySelectorAll('input[name="treatment"]').forEach((r) =>
-  r.addEventListener("change", updateColorControls)
-);
 document.getElementById("bg-mode").addEventListener("change", updateColorControls);
 updateColorControls();
+
+/* ---------- brand color palette (Canva-style) ---------- */
+
+function addSwatch(hex = "#1e3a8a") {
+  const wrap = document.createElement("span");
+  wrap.className = "swatch";
+  wrap.innerHTML = `<input type="color" value="${hex}" /><button type="button" class="x" title="Remove this color">×</button>`;
+  wrap.querySelector(".x").addEventListener("click", () => {
+    if ($("brand-colors").children.length > 1) wrap.remove();
+  });
+  $("brand-colors").appendChild(wrap);
+}
+
+function setPalette(hexes) {
+  $("brand-colors").innerHTML = "";
+  hexes.forEach((h) => addSwatch(h));
+}
+
+function getPalette() {
+  return [...$("brand-colors").querySelectorAll("input[type=color]")].map((i) => i.value);
+}
+
+$("add-color").addEventListener("click", () => addSwatch("#888888"));
+setPalette(["#1e3a8a", "#f59e0b", "#ffffff"]);
 
 /* ---------- inspiration screenshot: paste / drop / browse ---------- */
 
@@ -81,12 +101,8 @@ $("photo-input").addEventListener("change", (e) => {
 function collectBrand() {
   return {
     name: $("brand-name").value.trim(),
-    primary: $("color-primary").value,
-    secondary: $("color-secondary").value,
-    accent: $("color-accent").value,
-    gradient: document.querySelector('input[name="treatment"]:checked').value === "gradient",
-    gradientFrom: $("gradient-from").value,
-    gradientTo: $("gradient-to").value,
+    colors: getPalette(),
+    colorNotes: $("color-notes").value.trim(),
     fidelity: document.querySelector('input[name="fidelity"]:checked').value,
     background: {
       mode: $("bg-mode").value,
@@ -120,22 +136,19 @@ function applyUpdates(updates) {
   const setText = (id, val, label) => {
     if (typeof val === "string") { $(id).value = val; flash(id); applied.push(label); }
   };
-  const setColor = (id, val, label) => {
-    const hex = normalizeHex(val);
-    if (hex) { $(id).value = hex; flash(id); applied.push(label); }
-  };
   const setCheck = (id, val, label) => {
     if (typeof val === "boolean") { $(id).checked = val; flash(id); applied.push(label); }
   };
 
   setText("brand-name", updates.name, "brand name");
-  setColor("color-primary", updates.primary, "primary color");
-  setColor("color-secondary", updates.secondary, "secondary color");
-  setColor("color-accent", updates.accent, "accent color");
-  if (typeof updates.gradient === "boolean") {
-    document.querySelector(`input[name="treatment"][value="${updates.gradient ? "gradient" : "plain"}"]`).checked = true;
-    applied.push(updates.gradient ? "gradient treatment" : "plain colors");
+  if (Array.isArray(updates.colors)) {
+    const hexes = updates.colors.map(normalizeHex).filter(Boolean);
+    if (hexes.length) {
+      setPalette(hexes);
+      applied.push(`brand colors (${hexes.length})`);
+    }
   }
+  setText("color-notes", updates.colorNotes, "color notes");
   if (typeof updates.background === "string") {
     $("bg-mode").value = "describe";
     $("bg-text").value = updates.background;
@@ -323,12 +336,14 @@ async function callGenerate(body, button) {
 $("generate-btn").addEventListener("click", () => {
   if (!state.image) { setStatus("Paste or drop an inspiration screenshot first.", true); return; }
   $("generate-btn").classList.remove("pulse");
+  state.currentVariant = 0;
   callGenerate(
     {
       image: state.image,
       brand: collectBrand(),
       brief: $("brief").value.trim(),
       chatContext: state.chatSummary,
+      variants: Number($("variant-count").value),
     },
     $("generate-btn")
   );
@@ -337,7 +352,11 @@ $("generate-btn").addEventListener("click", () => {
 $("refine-btn").addEventListener("click", () => {
   const refinement = $("refine-input").value.trim();
   if (!refinement || !state.turns.length) return;
-  callGenerate({ history: state.turns, refinement }, $("refine-btn"));
+  const label = state.design?.variants?.[state.currentVariant]?.label;
+  const scoped = label
+    ? `For the variant "${label}": ${refinement}\n\n(Keep the other variants as they are unless the request clearly applies to all.)`
+    : refinement;
+  callGenerate({ history: state.turns, refinement: scoped }, $("refine-btn"));
   $("refine-input").value = "";
 });
 $("refine-input").addEventListener("keydown", (e) => {
@@ -355,13 +374,35 @@ const PHOTO_FALLBACK =
       "</svg>"
   );
 
+function currentVariant() {
+  const variants = state.design?.variants || [];
+  return variants[Math.min(state.currentVariant, variants.length - 1)] || null;
+}
+
 function artboardHtml() {
-  let html = state.design.html;
+  let html = currentVariant()?.html || "";
   if (state.logoDataUrl) html = html.replaceAll("{{LOGO_SRC}}", state.logoDataUrl);
   if (state.userPhotoDataUrl) html = html.replaceAll("{{USER_PHOTO}}", state.userPhotoDataUrl);
   html = html.replace(/\{\{PHOTO_\d+\}\}/g, (token) => state.photoUrls[token] || PHOTO_FALLBACK);
   html = html.replaceAll("{{USER_PHOTO}}", PHOTO_FALLBACK);
   return html;
+}
+
+function renderVariantTabs() {
+  const tabs = $("variant-tabs");
+  const variants = state.design?.variants || [];
+  tabs.hidden = variants.length < 2;
+  tabs.innerHTML = "";
+  variants.forEach((v, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = v.label || `Version ${i + 1}`;
+    btn.className = i === state.currentVariant ? "tab active" : "tab";
+    btn.addEventListener("click", () => {
+      state.currentVariant = i;
+      renderDesign();
+    });
+    tabs.appendChild(btn);
+  });
 }
 
 function fullDocument() {
@@ -370,6 +411,7 @@ function fullDocument() {
 
 function renderDesign() {
   const { width, height, analysis } = state.design;
+  renderVariantTabs();
   const iframe = $("preview");
   $("preview-empty").style.display = "none";
   iframe.hidden = false;

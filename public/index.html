@@ -46,20 +46,15 @@
       </label>
       <button id="research-btn" class="secondary">🔎 Research this brand online</button>
 
-      <div class="grid3">
-        <label>Primary <input type="color" id="color-primary" value="#1e3a8a" /></label>
-        <label>Secondary <input type="color" id="color-secondary" value="#f59e0b" /></label>
-        <label>Accent <input type="color" id="color-accent" value="#ffffff" /></label>
+      <label>Brand colors — the client's palette, like a Canva brand kit. The AI decides how to use them, guided by the inspiration.</label>
+      <div class="row">
+        <div id="brand-colors" class="swatch-row"></div>
+        <button id="add-color" type="button" class="mini" title="Add a brand color">+</button>
       </div>
 
-      <div class="row checks">
-        <label><input type="radio" name="treatment" value="plain" checked /> Plain colors</label>
-        <label><input type="radio" name="treatment" value="gradient" /> Gradient</label>
-      </div>
-      <div class="grid2" id="gradient-colors" hidden>
-        <label>Gradient from <input type="color" id="gradient-from" value="#1e3a8a" /></label>
-        <label>Gradient to <input type="color" id="gradient-to" value="#f59e0b" /></label>
-      </div>
+      <label>Color notes (optional)
+        <input type="text" id="color-notes" placeholder="e.g. use the red as a gradient; navy only for backgrounds; gold sparingly" />
+      </label>
 
       <label>Background
         <select id="bg-mode">
@@ -78,11 +73,11 @@
       </label>
 
       <div class="grid2">
-        <label>Heading font
-          <input type="text" id="font-heading" placeholder="e.g. Playfair Display" list="font-suggestions" />
+        <label>Heading font (empty = match the inspiration's font)
+          <input type="text" id="font-heading" placeholder="empty = copy inspiration" list="font-suggestions" />
         </label>
-        <label>Body font
-          <input type="text" id="font-body" placeholder="e.g. Inter" list="font-suggestions" />
+        <label>Body font (empty = match the inspiration's font)
+          <input type="text" id="font-body" placeholder="empty = copy inspiration" list="font-suggestions" />
         </label>
         <datalist id="font-suggestions">
           <option>Inter</option><option>Poppins</option><option>Montserrat</option>
@@ -112,6 +107,16 @@
       </label>
       <p class="hint">⚠ Whatever you type here <b>overrides the inspiration</b>. To copy the inspiration faithfully, keep this short (one small change) or empty — the screenshot is the spec.</p>
 
+      <div class="row">
+        <label class="inline">Versions
+          <select id="variant-count">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <span class="hint" style="margin:0">More versions = more looks to pick from (each adds a little cost)</span>
+      </div>
       <button id="generate-btn" class="primary">✦ Generate on-brand creative</button>
       <div id="status" class="status" hidden></div>
     </section>
@@ -139,6 +144,7 @@
     <!-- ============ RIGHT: RESULT ============ -->
     <section class="panel result">
       <h2>Result</h2>
+      <div id="variant-tabs" class="row" hidden></div>
       <div id="preview-wrap" class="preview-wrap">
         <div id="preview-empty">Your recreated creative will appear here.</div>
         <iframe id="preview" title="Generated creative" sandbox="allow-same-origin" hidden></iframe>

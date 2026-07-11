@@ -198,6 +198,29 @@ button.secondary { width: 100%; margin: 2px 0 14px; font-size: 13px; }
 .chat-input { display: flex; gap: 8px; margin-top: 10px; }
 .chat-input input { flex: 1; margin-top: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 9px 10px; font-size: 14px; }
 
+/* brand color palette */
+.swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch { position: relative; display: inline-block; }
+.swatch input[type="color"] {
+  width: 52px; height: 38px; margin: 0;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel-2); padding: 3px; cursor: pointer;
+}
+.swatch .x {
+  position: absolute; top: -7px; right: -7px;
+  width: 18px; height: 18px; line-height: 14px; padding: 0;
+  border-radius: 50%; font-size: 12px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+}
+.swatch .x:hover { color: #ff8f8f; border-color: #5c2b2b; }
+button.mini { padding: 8px 12px; font-size: 15px; line-height: 1; }
+label.inline { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+label.inline select { width: auto; margin: 0; }
+
+/* variant tabs */
+button.tab { font-size: 13px; padding: 7px 14px; border-radius: 999px; }
+button.tab.active { border-color: var(--brand); background: rgba(124, 108, 240, 0.15); color: #fff; }
+
 .checklist {
   display: flex;
   flex-wrap: wrap;

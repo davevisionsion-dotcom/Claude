@@ -48,7 +48,10 @@ Rules for every recreation:
   * strict — reproduce the inspiration's composition element-for-element: same placement, same relative sizes, same background mood (dark stays dark), same alignment and density. Only the branding, copy, and imagery content change.
   * balanced (default) — keep the inspiration's overall structure and hierarchy, but adapt freely where the brand kit calls for it.
   * free — take only the mood and energy of the inspiration; design the layout freely.
-- Apply the client's brand kit exactly: their colors (respect the plain-vs-gradient choice), their background preference, their heading and body fonts, and their text style preferences (bold / italic / underline emphasis).
+- The brand kit gives a color PALETTE, not fixed roles. You decide which color leads, which supports, and which accents — guided by how the inspiration distributes its own colors and by the client's color notes. Use ONLY palette colors (plus white/black/neutrals where needed for contrast).
+- Reproduce the inspiration's visual effects — neon glows, gradients, shadows, grain, textures, light rays — but recolor them with the brand palette. A purple neon glow in the inspiration becomes the same neon glow in a brand color. Never drop an effect just because the brand colors differ.
+- Apply the client's background preference, heading and body fonts, and text style preferences (bold / italic / underline emphasis).
+- Produce EXACTLY the requested number of variants. Every variant keeps the same layout (per the fidelity level) but applies the palette meaningfully differently — different dominant color, inverted light/dark, different accent placement. Give each a short label ("Navy dominant", "Light version").
 - Follow the client's additional instructions to the letter. If an instruction conflicts with the inspiration's layout, the instruction wins for that specific point — but preserve every aspect of the inspiration's composition the instructions do NOT explicitly change. Never let a small instruction justify redesigning the whole layout.
 - Where the inspiration uses photography, adapt the SUBJECT to the client's topic (a laptop in the inspiration becomes a leadership-related photo when the post is about leadership). Keep the photo's size, position, crop, and any overlay/duotone/shadow treatment identical to the inspiration. Image source priority:
   1. If the brief says the CLIENT PROVIDED A PHOTO: place <img src="{{USER_PHOTO}}" alt="..."> with object-fit: cover in the main image slot, sized and positioned like the inspiration's image. Match the inspiration's visual treatment as closely as CSS allows — crop, rounded corners/masking, duotone or color-wash overlays (a positioned pseudo-element or overlay div with mix-blend-mode), grayscale/contrast/saturation filters, borders, shadows.
@@ -58,12 +61,15 @@ Rules for every recreation:
 - If the brand kit says a logo was provided, place an <img src="{{LOGO_SRC}}" alt="logo"> element (the application substitutes the real logo file into that exact token) sized and positioned the way the inspiration treats its logo/brand mark.
 - Load fonts with a Google Fonts @import at the top of the <style> block when the requested fonts are Google Fonts; otherwise use the closest widely available fallback stack and say so in your analysis.
 
+Typography: when the brief gives a heading or body font, use it. When a font is NOT given, identify the inspiration's typography (serif/sans, weight, width, character) and use the closest matching Google Font — name your choice in the analysis.
+
 Output contract (strict):
-- "html" must be ONE self-contained fragment: a single root <div class="artboard"> containing an inline <style> tag and the layout markup. No <html>, <head>, <body>, no external scripts, no external images (inline SVG and CSS art only, plus the optional {{LOGO_SRC}} token).
+- Each variant's "html" must be ONE self-contained fragment: a single root <div class="artboard"> containing an inline <style> tag and the layout markup. No <html>, <head>, <body>, no external scripts, no external images (inline SVG and CSS art only, plus the optional {{LOGO_SRC}} / {{USER_PHOTO}} / {{PHOTO_n}} tokens).
 - Scope every CSS rule under .artboard so nothing leaks.
-- The .artboard element must have fixed pixel dimensions equal to "width" x "height". Match the inspiration's aspect ratio unless the brief asks for a specific format (default social sizes: 1080x1080 square, 1080x1350 portrait, 1080x1920 story).
+- The .artboard element must have fixed pixel dimensions equal to "width" x "height" (shared by all variants). Match the inspiration's aspect ratio unless the brief asks for a specific format (default social sizes: 1080x1080 square, 1080x1350 portrait, 1080x1920 story).
 - Use absolute/flex/grid positioning so the result is pixel-stable — it will be exported as a PNG/JPEG.
-- "analysis" is a short note to the designer: what you observed in the inspiration (composition, hierarchy, mood) and the key choices you made adapting it to the brand. Keep it under 150 words.`;
+- {{PHOTO_n}} tokens must be unique across ALL variants (variant 2 continues numbering after variant 1), each listed in its own variant's "photos".
+- "analysis" is a short note to the designer: what you observed in the inspiration (composition, hierarchy, mood), how the variants differ, and font choices if you picked them. Keep it under 150 words.`;
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -71,37 +77,52 @@ const OUTPUT_SCHEMA = {
     analysis: {
       type: "string",
       description:
-        "Short designer's note: what the inspiration's layout does and how it was adapted to the brand.",
+        "Short designer's note: what the inspiration's layout does, how the variants differ, and font choices if picked.",
     },
-    width: { type: "integer", description: "Artboard width in pixels." },
-    height: { type: "integer", description: "Artboard height in pixels." },
-    html: {
-      type: "string",
-      description:
-        "Self-contained HTML fragment: one <div class=\"artboard\"> with an inline <style> tag, fixed pixel size, all CSS scoped under .artboard.",
-    },
-    photos: {
+    width: { type: "integer", description: "Artboard width in pixels (shared by all variants)." },
+    height: { type: "integer", description: "Artboard height in pixels (shared by all variants)." },
+    variants: {
       type: "array",
-      description:
-        "One entry per {{PHOTO_n}} token used in the html. Empty array when stock photos are disabled or the design uses none.",
+      description: "Exactly the requested number of design variants.",
       items: {
         type: "object",
         properties: {
-          token: {
+          label: {
             type: "string",
-            description: "The exact token used in the html, e.g. {{PHOTO_1}}",
+            description: "Short variant name, e.g. 'Navy dominant' or 'Light version'.",
           },
-          query: {
+          html: {
             type: "string",
-            description: "2-5 word stock-photo search query matching the client's topic",
+            description:
+              "Self-contained HTML fragment: one <div class=\"artboard\"> with an inline <style> tag, fixed pixel size, all CSS scoped under .artboard.",
+          },
+          photos: {
+            type: "array",
+            description:
+              "One entry per {{PHOTO_n}} token used in this variant's html. Empty array when stock photos are disabled or unused.",
+            items: {
+              type: "object",
+              properties: {
+                token: {
+                  type: "string",
+                  description: "The exact token used in the html, e.g. {{PHOTO_1}}",
+                },
+                query: {
+                  type: "string",
+                  description: "2-5 word stock-photo search query matching the client's topic",
+                },
+              },
+              required: ["token", "query"],
+              additionalProperties: false,
+            },
           },
         },
-        required: ["token", "query"],
+        required: ["label", "html", "photos"],
         additionalProperties: false,
       },
     },
   },
-  required: ["analysis", "width", "height", "html", "photos"],
+  required: ["analysis", "width", "height", "variants"],
   additionalProperties: false,
 };
 
@@ -120,33 +141,34 @@ function backgroundLine(bg) {
   }
 }
 
-function brandBrief(brand, brief, chatContext, photosEnabled) {
+function brandBrief(brand, brief, chatContext, photosEnabled, variantCount) {
   const fidelity = ["strict", "balanced", "free"].includes(brand.fidelity)
     ? brand.fidelity
     : "balanced";
+  const palette =
+    Array.isArray(brand.colors) && brand.colors.length
+      ? brand.colors.join(", ")
+      : "(none given — sample the inspiration's palette)";
   const lines = [
     `LAYOUT FIDELITY: ${fidelity}`,
+    `VARIANTS: produce exactly ${variantCount}`,
     `STOCK PHOTOS: ${
       photosEnabled
-        ? "ENABLED — use {{PHOTO_n}} tokens and fill the photos array with topic-matched search queries"
+        ? "ENABLED — use {{PHOTO_n}} tokens and fill each variant's photos array with topic-matched search queries"
         : "DISABLED — use CSS/SVG illustration or a styled placeholder; no {{PHOTO_n}} tokens"
     }`,
     ``,
     `CLIENT BRAND KIT`,
     `- Brand name: ${brand.name || "(not given)"}`,
-    `- Primary color: ${brand.primary}`,
-    `- Secondary color: ${brand.secondary}`,
-    `- Accent color: ${brand.accent}`,
-    `- Color treatment: ${
-      brand.gradient
-        ? `gradient, blending from ${brand.gradientFrom || brand.primary} to ${
-            brand.gradientTo || brand.secondary
-          } where the inspiration uses large color fields`
-        : `plain, flat color fields`
-    }`,
+    `- Brand color palette (no fixed roles — you decide, guided by the inspiration): ${palette}`,
+    `- Color notes: ${brand.colorNotes || "(none)"}`,
     `- Background: ${backgroundLine(brand.background)}`,
-    `- Heading font: ${brand.headingFont || "designer's choice"}`,
-    `- Body font: ${brand.bodyFont || "designer's choice"}`,
+    `- Heading font: ${
+      brand.headingFont || "not given — match the inspiration's heading typography with the closest Google Font"
+    }`,
+    `- Body font: ${
+      brand.bodyFont || "not given — match the inspiration's body typography with the closest Google Font"
+    }`,
     `- Text emphasis styles to favor: ${
       [
         brand.bold && "bold",
@@ -190,7 +212,8 @@ function brandBrief(brand, brief, chatContext, photosEnabled) {
 }
 
 app.post("/api/generate", async (req, res) => {
-  const { image, brand, brief, chatContext, history, refinement } = req.body || {};
+  const { image, brand, brief, chatContext, history, refinement, variants } = req.body || {};
+  const variantCount = Math.min(3, Math.max(1, Number(variants) || 1));
 
   let messages;
   if (Array.isArray(history) && history.length > 0 && refinement) {
@@ -220,7 +243,13 @@ app.post("/api/generate", async (req, res) => {
           },
           {
             type: "text",
-            text: brandBrief(brand || {}, brief, chatContext, Boolean(process.env.PEXELS_API_KEY)),
+            text: brandBrief(
+              brand || {},
+              brief,
+              chatContext,
+              Boolean(process.env.PEXELS_API_KEY),
+              variantCount
+            ),
           },
         ],
       },
@@ -258,7 +287,9 @@ app.post("/api/generate", async (req, res) => {
 
     const text = final.content.find((b) => b.type === "text")?.text ?? "";
     const design = JSON.parse(text);
-    const photoUrls = await resolvePhotos(design.photos);
+    const photoUrls = await resolvePhotos(
+      (design.variants || []).flatMap((v) => v.photos || [])
+    );
 
     res.json({
       design,
@@ -334,7 +365,7 @@ Response contract (strict): respond ONLY with a single JSON object, no other tex
 
 "checklist" reports which of THE FIVE THINGS are confirmed so far — set an item true only once the user has confirmed it (or it was unambiguous in their input). Status can only be "ready" when all five are true.
 
-Allowed keys in "updates": name (string), primary (hex), secondary (hex), accent (hex), gradient (boolean), background (string), headingFont (string), bodyFont (string), bold (boolean), italic (boolean), underline (boolean), notes (string), instructions (string), brief (string).
+Allowed keys in "updates": name (string), colors (array of hex strings — the brand's full palette), colorNotes (string), background (string), headingFont (string), bodyFont (string), bold (boolean), italic (boolean), underline (boolean), notes (string), instructions (string), brief (string). Leave headingFont/bodyFont out unless the brand's real fonts are known — empty means "match the inspiration's fonts".
 
 Never invent confirmation — status stays "asking" until the USER has explicitly confirmed the company identity (or said to skip research) and answered your key questions.
 
